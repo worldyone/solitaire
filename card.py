@@ -11,6 +11,7 @@ class Card(ft.GestureDetector):
         super().__init__()
         self.mouse_cursor = ft.MouseCursor.MOVE
         self.drag_interval = 5
+        self.on_tap = self.click
         self.on_pan_start = self.start_drag
         self.on_pan_update = self.drag
         self.on_pan_end = self.drop
@@ -84,36 +85,45 @@ class Card(ft.GestureDetector):
             self.draggable_pile = [self]
 
     def start_drag(self, e: ft.DragStartEvent):
-        self.get_draggable_pile()
-        self.move_on_top()
-        self.solitaire.update()
-
-    def drag(self, e: ft.DragUpdateEvent):
-        for card in self.draggable_pile:
-            card.top = (
-                max(0, self.top + e.delta_y)
-                + self.draggable_pile.index(card) * CARD_OFFSET
-            )
-            card.left = max(0, self.left + e.delta_x)
+        if self.face_up:
+            self.move_on_top()
+            self.get_draggable_pile()
             self.solitaire.update()
 
+    def drag(self, e: ft.DragUpdateEvent):
+        if self.face_up:
+            for card in self.draggable_pile:
+                card.top = (
+                    max(0, self.top + e.delta_y)
+                    + self.draggable_pile.index(card) * CARD_OFFSET
+                )
+                card.left = max(0, self.left + e.delta_x)
+                self.solitaire.update()
+
     def drop(self, e: ft.DragEndEvent):
-        for slot in self.solitaire.tableau:
-            if (
-                abs(self.top - (slot.top + len(slot.pile) * CARD_OFFSET))
-                < DROP_PROXIMITY
-                and abs(self.left - slot.left) < DROP_PROXIMITY
-            ):
-                self.place(slot)
-                self.solitaire.update()
-                return
-        for slot in self.solitaire.foundations:
-            if (
-                abs(self.top - slot.top) < DROP_PROXIMITY
-                and abs(self.left - slot.left) < DROP_PROXIMITY
-            ):
-                self.place(slot)
-                self.solitaire.update()
-                return
+        if self.face_up:
+            for slot in self.solitaire.tableau:
+                if (
+                    abs(self.top - (slot.top + len(slot.pile) * CARD_OFFSET))
+                    < DROP_PROXIMITY
+                    and abs(self.left - slot.left) < DROP_PROXIMITY
+                ):
+                    self.place(slot)
+                    self.solitaire.update()
+                    return
+            for slot in self.solitaire.foundations:
+                if (
+                    abs(self.top - slot.top) < DROP_PROXIMITY
+                    and abs(self.left - slot.left) < DROP_PROXIMITY
+                ):
+                    self.place(slot)
+                    self.solitaire.update()
+                    return
 
         self.bounce_back()
+
+    def click(self, e):
+        if self.slot in self.solitaire.tableau:
+            if not self.face_up and self == self.slot.get_top_card():
+                self.turn_face_up()
+                self.solitaire.update()
