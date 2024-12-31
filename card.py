@@ -12,6 +12,7 @@ class Card(ft.GestureDetector):
         self.mouse_cursor = ft.MouseCursor.MOVE
         self.drag_interval = 5
         self.on_tap = self.click
+        self.on_double_tap = self.double_click
         self.on_pan_start = self.start_drag
         self.on_pan_update = self.drag
         self.on_pan_end = self.drop
@@ -104,9 +105,10 @@ class Card(ft.GestureDetector):
         if self.face_up:
             for slot in self.solitaire.tableau:
                 if (
-                    abs(self.top - (slot.top + len(slot.pile) * CARD_OFFSET))
-                    < DROP_PROXIMITY
+                    abs(self.top - (slot.top + len(slot.pile)
+                        * CARD_OFFSET)) < DROP_PROXIMITY
                     and abs(self.left - slot.left) < DROP_PROXIMITY
+                    and self.check_tableau_rules(self, slot)
                 ):
                     self.place(slot)
                     self.solitaire.update()
@@ -115,15 +117,47 @@ class Card(ft.GestureDetector):
                 if (
                     abs(self.top - slot.top) < DROP_PROXIMITY
                     and abs(self.left - slot.left) < DROP_PROXIMITY
+                    and self.check_foundations_rules(self, slot)
                 ):
                     self.place(slot)
                     self.solitaire.update()
                     return
 
         self.bounce_back()
+        self.solitaire.update()
 
     def click(self, e):
         if self.slot in self.solitaire.tableau:
             if not self.face_up and self == self.slot.get_top_card():
                 self.turn_face_up()
                 self.solitaire.update()
+
+    def check_foundations_rules(self, card, slot):
+        top_card = slot.get_top_card()
+        if top_card is not None:
+            return (
+                card.suite.name == top_card.suite.name
+                and card.rank.value - top_card.rank.value == 1
+            )
+        else:
+            return card.rank.name == "Ace"
+
+    def double_click(self, e):
+        self.get_draggable_pile()
+        if self.face_up and len(self.draggable_pile == 1):
+            self.move_on_top()
+            for slot in self.solitaire.foundations:
+                if self.solitaire.check_foundations_rules(self, slot):
+                    self.place(slot)
+                    return
+
+    def check_tableau_rules(self, card, slot):
+        top_card = slot.get_top_card()
+        if top_card is not None:
+            return (
+                card.suite.color != top_card.suite.color
+                and top_card.rank.value - card.rank.value == 1
+                and top_card.face_up
+            )
+        else:
+            return card.rank.name == "King"
